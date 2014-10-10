@@ -244,14 +244,14 @@ module Capistrano
             {
               :scaling_adjustment => fetch(:autoscaling_expand_policy_adjustment, 1),
               :cooldown => fetch(:autoscaling_expand_policy_cooldown, 300),
-              :scaling_type => fetch(:autoscaling_expand_policy_type, "ChangeInCapacity"),
+              :adjustment_type => fetch(:autoscaling_expand_policy_type, "ChangeInCapacity"),
             }.merge(fetch(:autoscaling_expand_policy_extra_options, {}))
           }
           _cset(:autoscaling_shrink_policy_options) {
             {
               :scaling_adjustment => fetch(:autoscaling_shrink_policy_adjustment, -1),
               :cooldown => fetch(:autoscaling_shrink_policy_cooldown, 300),
-              :scaling_type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
+              :adjustment_type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
             }.merge(fetch(:autoscaling_shrink_policy_extra_options, {}))
           }
           _cset(:autoscaling_expand_policy) { autoscaling_group.scaling_policies[autoscaling_expand_policy_name] rescue nil }
@@ -591,7 +591,7 @@ module Capistrano
 
             launch_configuration = nil
             if autoscaling_group and autoscaling_group.exists?
-              launch_configuration = autoscaling_gruop.launch_configuration
+              launch_configuration = autoscaling_group.launch_configuration
             elsif autoscaling_launch_configuration and autoscaling_launch_configuration.exists?
               launch_configuration = autoscaling_launch_configuration
             end
