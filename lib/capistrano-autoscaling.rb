@@ -316,6 +316,7 @@ module Capistrano
           task(:update, :roles => :app, :except => { :no_release => true }) {
             suspend
             update_image
+            term_old_instances
             update_launch_configuration
             update_group
             update_policy
@@ -684,6 +685,49 @@ module Capistrano
             end
 
           }
+
+          desc "Get SHA for instances"
+          task :git_shas do
+            git_dir = "#{deploy_to}/#{current_dir}"
+            git_log = "git log -1 --pretty=oneline --abbrev-commit"
+            autoscaling_elb_instance.instances.each do |ec2_instance|
+              # such a hack! TODO: write this as if I knew capistrano.
+              instance = [ec2_instance.tags['Name'],ec2_instance.id, ec2_instance.status, ec2_instance.public_ip_address].join(" ")
+              result   = %x[ssh #{user}@#{ec2_instance.public_ip_address} "cd #{git_dir} && #{git_log}"].chomp
+              printf("%30.30s : %s \n", result, instance)
+            end 
+          end
+
+          desc "Terminates un-named instances in the load balancer"
+          task :term_old_instances do
+            
+            lb_instances = autoscaling_elb_instance.instances # instances running in the balancer
+            as_instances = autoscaling_group.ec2_instances    # autoscale group instances
+            
+            all_instances = [as_instances.to_a + lb_instances.to_a].flatten
+            save_instances = {}
+            term_instances = {}
+
+            # Only Terminate instances with no Name Tag set, because our main instance
+            # from which we create AMIS from does have a Name tag set.
+            # TODO: A better method for selecting the main EC2 name (config settings?)
+            all_instances.select { |i| i.tags["Name"].nil? }.each { |instance| term_instances[instance.id] = instance }
+            all_instances.reject { |i| i.tags["Name"].nil? }.each { |instance| save_instances[instance.id] = instance }
+            puts "Load balance instances : #{lb_instances.map {|i| i.id }.join(" ")}"
+            puts "Autoscale instances    : #{as_instances.map {|i| i.id }.join(" ")}"
+            def instance_info(ec2_instance)
+              tags = ec2_instance.tags.to_a.map {|k,v| "#{k}=#{v}"}.join(", ")
+              "#{ec2_instance.id} -- #{ec2_instance.public_ip_address} -- #{ec2_instance.status} --[#{tags}]"
+            end
+            term_instances.each do |id,ec2_instance|
+              puts "terminating #{instance_info(ec2_instance)}"
+              ec2_instance.terminate
+            end
+            save_instances.each do |id,ec2_instance|
+              puts "keeping #{instance_info(ec2_instance)}"
+            end
+          end
+
 
           desc("Delete old AMIs.")
           task(:cleanup, :roles => :app, :except => { :no_release => true }) {
