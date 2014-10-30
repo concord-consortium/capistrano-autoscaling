@@ -698,6 +698,30 @@ module Capistrano
             end 
           end
 
+          _cset(:preflight_checks, ["deploy"])
+          on(:load) {
+            [ preflight_checks ].flatten.each do |t|
+              before t, "autoscaling:require_credentials" if t
+            end
+          }
+
+          desc "Require aws_secret_access_key & aws_access_key_id be set"
+          task :require_credentials do
+            require_keys = fetch(:autoscaling_require_keys, false)
+            if require_keys
+              secret = fetch(:aws_secret_access_key, ENV["AWS_SECRET_ACCESS_KEY"])
+              id     = fetch(:aws_access_key_id, ENV["AWS_ACCESS_KEY_ID"])
+              abort_msg= <<-EOM
+                This task is terminating because this deployment stage requires AWS keys
+                which can be set in your environment using
+                export=AWS_ACCESS_KEY_ID="yyyy"
+                export=AWS_SECRET_ACCESS_KEY="xxxxx"
+              EOM
+              abort_msg.gsub!(/^\s+/,"")
+              abort abort_msg unless (secret && id)
+            end
+          end
+
           desc "Terminates un-named instances in the load balancer"
           task :term_old_instances do
             
