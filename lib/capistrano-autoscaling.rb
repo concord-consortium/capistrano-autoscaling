@@ -182,12 +182,14 @@ module Capistrano
 ## AMI
           _cset(:autoscaling_image_name_prefix) { "#{autoscaling_application}/" }
           _cset(:autoscaling_image_name) { "#{autoscaling_image_name_prefix}#{autoscaling_timestamp}" }
+          _cset(:autoscaling_image_master_name) { fetch('stage').to_s }
           _cset(:autoscaling_image_instance) {
-            if 0 < autoscaling_ec2_instances.length
-              autoscaling_ec2_instances.reject { |instance| instance.root_device_type != :ebs }.last
-            else
-              abort("No EC2 instances are ready to create AMI.")
-            end
+            _name = autoscaling_image_master_name
+            found = autoscaling_ec2_client.instances.with_tag('Name', _name)
+            count = found.count
+            abort "No EC2 instance found with 'Name' tag set to '#{_name}'       "  unless count > 0
+            abort "Multiple EC2 instances found with 'Name' tag set to '#{_name}'" unless count == 1
+            found.to_a.first
           }
           _cset(:autoscaling_image_options) {
             { :no_reboot => true }.merge(fetch(:autoscaling_image_extra_options, {}))
@@ -685,6 +687,12 @@ module Capistrano
             end
 
           }
+
+          desc "get info about ec2 instances"
+          task :source_info do
+            puts "EC2 Name for AMI source: #{autoscaling_image_master_name}"
+            puts "ec2_instance #{autoscaling_image_instance.id}"
+          end
 
           desc "Get SHA for instances"
           task :git_shas do
