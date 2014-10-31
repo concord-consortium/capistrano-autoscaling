@@ -700,8 +700,9 @@ module Capistrano
             git_log = "git log -1 --pretty=oneline --abbrev-commit"
             autoscaling_elb_instance.instances.each do |ec2_instance|
               # such a hack! TODO: write this as if I knew capistrano.
+              ssh_opts = "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o LogLevel=quiet"
               instance = [ec2_instance.tags['Name'],ec2_instance.id, ec2_instance.status, ec2_instance.public_ip_address].join(" ")
-              result   = %x[ssh #{user}@#{ec2_instance.public_ip_address} "cd #{git_dir} && #{git_log}"].chomp
+              result   = %x[ssh #{ssh_opts} #{user}@#{ec2_instance.public_ip_address} "cd #{git_dir} && #{git_log}"].chomp
               printf("%30.30s : %s \n", result, instance)
             end 
           end
