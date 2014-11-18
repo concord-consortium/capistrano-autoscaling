@@ -325,10 +325,17 @@ module Capistrano
             update_alarm
             resume
           }
+          _cset(:skip_autoscaling_hooks) {
+            # don't call autoscaling_access_key_id -- That one aborts...
+            key = fetch(:aws_access_key_id, ENV["AWS_ACCESS_KEY_ID"])
+            !(key && key.size > 0)
+          }
           _cset(:autoscaling_update_after_hooks, ["deploy", "deploy:cold", "deploy:rollback"])
           on(:load) {
             [ autoscaling_update_after_hooks ].flatten.each do |t|
-              after t, "autoscaling:update" if t
+              unless skip_autoscaling_hooks
+                after t, "autoscaling:update" if t
+              end
             end
           }
 
@@ -736,7 +743,7 @@ module Capistrano
             
             lb_instances = autoscaling_elb_instance.instances # instances running in the balancer
             as_instances = autoscaling_group.ec2_instances    # autoscale group instances
-            
+    
             all_instances = [as_instances.to_a + lb_instances.to_a].flatten
             save_instances = {}
             term_instances = {}
@@ -808,7 +815,9 @@ module Capistrano
           _cset(:autoscaling_cleanup_after_hooks, ["autoscaling:update"])
           on(:load) {
             [ autoscaling_cleanup_after_hooks ].flatten.each do |t|
-              after t, "autoscaling:cleanup" if t
+              unless skip_autoscaling_hooks
+                after t, "autoscaling:cleanup" if t
+              end
             end
           }
         }

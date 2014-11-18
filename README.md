@@ -51,6 +51,8 @@ The following options are preserved to manage AutoScaling.
  * `:autoscaling_security_groups` - The security groups which will be used with AutoScaling. By default, use `%w(default)`.
  * `:autoscaling_min_size` - The minimal size of AutoScaling cluster. By default, use `1`.
  * `:autoscaling_max_size` - The maximum size of AutoScaling cluster. By default, use `:autoscaling_min_size`.
+ * `:autoscaling_require_keys` – Preflight … check existance of keys before doing a deploy.
+
 
 ### ELB options
 
